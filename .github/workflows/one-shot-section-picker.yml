@@ -14,8 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Patch Melody Harmonizer
         shell: bash
         run: |
@@ -24,54 +22,51 @@ jobs:
           p=Path('index.html')
           text=p.read_text()
 
-          old=".songToolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.songToolbar input{min-width:230px;flex:1;border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font-size:15px}.saveState{font-size:12px;color:#15803d}.activeTarget{margin:10px 0;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px}"
-          new=".songToolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.songToolbar input{min-width:230px;flex:1;border:1px solid #cbd5e1;border-radius:10px;padding:11px 12px;font-size:15px}.saveState{font-size:12px;color:#15803d}.startAnywhere{margin:12px 0;padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:#fbfdff;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.startAnywhere .startCopy{min-width:220px;flex:1}.startAnywhere select{padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-weight:700}.activeTarget{margin:10px 0;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px}"
-          assert old in text
+          text=text.replace(
+          ".saveState{font-size:12px;color:#15803d}.activeTarget{margin:10px 0;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px}",
+          ".saveState{font-size:12px;color:#15803d}.startAnywhere{margin:12px 0;padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:#fbfdff;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.startAnywhere .startCopy{min-width:220px;flex:1}.startAnywhere select{padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;font-weight:700}.activeTarget{margin:10px 0;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px}",1)
+
+          old='<section class="panel"><div class="songToolbar"><input id="projectName" aria-label="Song name" placeholder="Untitled Song"><button id="practiceSong">▶ Practice saved song</button><button id="newSong">New song</button><span id="saveState" class="saveState">Saved on this device</span></div><div class="activeTarget">Working on: <b id="activeSectionLabel">Verse</b></div><div id="sectionStrip" class="sectionStrip"></div></section>'
+          new='<section class="panel"><div class="songToolbar"><input id="projectName" aria-label="Song name" placeholder="Untitled Song"><button id="practiceSong">▶ Practice saved song</button><button id="newSong">New song</button><span id="saveState" class="saveState">Saved on this device</span></div><div class="startAnywhere"><div class="startCopy"><b>Start anywhere in the song</b><div class="muted">Choose the part you want to work on. The app will add it, make it active, and start a fresh melody workspace there.</div></div><select id="startSectionType" aria-label="Song section to add"><option>Intro</option><option selected>Verse</option><option>Pre-Chorus</option><option>Chorus</option><option>Post-Chorus</option><option>Bridge</option><option>Interlude</option><option>Breakdown</option><option>Solo</option><option>Outro</option></select><button id="startSection" class="primary">+ Add section & start here</button></div><div class="activeTarget">Working on: <b id="activeSectionLabel">Verse 1</b></div><div id="sectionStrip" class="sectionStrip"></div></section>'
+          if old not in text: raise SystemExit('top section pattern not found')
           text=text.replace(old,new,1)
 
-          old='''<section class="panel">\n  <div class="songToolbar"><input id="projectName" aria-label="Song name" placeholder="Untitled Song"><button id="practiceSong">▶ Practice saved song</button><button id="newSong">New song</button><span id="saveState" class="saveState">Saved on this device</span></div>\n  <div class="activeTarget">Working on: <b id="activeSectionLabel">Verse</b></div>\n  <div id="sectionStrip" class="sectionStrip"></div>\n</section>'''
-          new='''<section class="panel">\n  <div class="songToolbar"><input id="projectName" aria-label="Song name" placeholder="Untitled Song"><button id="practiceSong">▶ Practice saved song</button><button id="newSong">New song</button><span id="saveState" class="saveState">Saved on this device</span></div>\n  <div class="startAnywhere">\n    <div class="startCopy"><b>Start anywhere in the song</b><div class="muted">Choose the part you want to work on. The app will add it, make it active, and start a fresh melody workspace there.</div></div>\n    <select id="startSectionType" aria-label="Song section to add">\n      <option>Intro</option><option selected>Verse</option><option>Pre-Chorus</option><option>Chorus</option><option>Post-Chorus</option><option>Bridge</option><option>Interlude</option><option>Breakdown</option><option>Solo</option><option>Outro</option>\n    </select>\n    <button id="startSection" class="primary">+ Add section & start here</button>\n  </div>\n  <div class="activeTarget">Working on: <b id="activeSectionLabel">Verse 1</b></div>\n  <div id="sectionStrip" class="sectionStrip"></div>\n</section>'''
-          assert old in text
-          text=text.replace(old,new,1)
-
-          old='<select id="sectionType"><option>Intro</option><option>Verse</option><option>Pre-Chorus</option><option>Chorus</option><option>Post-Chorus</option><option>Bridge</option><option>Breakdown</option><option>Solo</option><option>Outro</option></select>'
-          new='<select id="sectionType"><option>Intro</option><option>Verse</option><option>Pre-Chorus</option><option>Chorus</option><option>Post-Chorus</option><option>Bridge</option><option>Interlude</option><option>Breakdown</option><option>Solo</option><option>Outro</option></select>'
-          assert old in text
-          text=text.replace(old,new,1)
+          text=text.replace('<select id="sectionType"><option>Intro</option><option>Verse</option><option>Pre-Chorus</option><option>Chorus</option><option>Post-Chorus</option><option>Bridge</option><option>Breakdown</option><option>Solo</option><option>Outro</option></select>','<select id="sectionType"><option>Intro</option><option>Verse</option><option>Pre-Chorus</option><option>Chorus</option><option>Post-Chorus</option><option>Bridge</option><option>Interlude</option><option>Breakdown</option><option>Solo</option><option>Outro</option></select>',1)
 
           old="function sectionLabel(t,n){return t+(n>1?' '+n:'')}function starterProject(){var types=['Intro','Verse','Pre-Chorus','Chorus','Verse','Pre-Chorus','Chorus','Bridge','Final Chorus','Outro'],counts={};var sections=types.map(function(t){var base=t==='Final Chorus'?'Chorus':t;counts[base]=(counts[base]||0)+1;return{id:uid(),type:t,label:t==='Final Chorus'?'Final Chorus':sectionLabel(base,counts[base]),phrases:[],progressions:[],voicings:[]}});return{name:'Untitled Song',sections:sections,activeId:sections[1].id,updatedAt:Date.now()}}"
           new="function sectionLabel(t,n){if(t==='Intro'||t==='Outro')return t+(n>1?' '+n:'');return t+' '+n}function starterProject(){var s={id:uid(),type:'Verse',label:'Verse 1',phrases:[],progressions:[],voicings:[]};return{name:'Untitled Song',sections:[s],activeId:s.id,updatedAt:Date.now()}}"
-          assert old in text
+          if old not in text: raise SystemExit('starter pattern not found')
           text=text.replace(old,new,1)
 
           old="function normalizeProject(p){if(!p||!Array.isArray(p.sections)||!p.sections.length)return starterProject();p.name=p.name||'Untitled Song';p.sections.forEach(function(s){s.id=s.id||uid();s.label=s.label||s.type||'Section';s.phrases=Array.isArray(s.phrases)?s.phrases:[];s.progressions=Array.isArray(s.progressions)?s.progressions:[];s.voicings=Array.isArray(s.voicings)?s.voicings:[]});if(!p.activeId||!p.sections.some(function(s){return s.id===p.activeId}))p.activeId=p.sections[0].id;return p}"
           new="function normalizeProject(p){if(!p||!Array.isArray(p.sections)||!p.sections.length)return starterProject();p.name=p.name||'Untitled Song';var counts={};p.sections.forEach(function(s){s.id=s.id||uid();s.type=s.type||'Section';counts[s.type]=(counts[s.type]||0)+1;if(!s.label||s.label===s.type)s.label=sectionLabel(s.type,counts[s.type]);s.phrases=Array.isArray(s.phrases)?s.phrases:[];s.progressions=Array.isArray(s.progressions)?s.progressions:[];s.voicings=Array.isArray(s.voicings)?s.voicings:[]});if(!p.activeId||!p.sections.some(function(s){return s.id===p.activeId}))p.activeId=p.sections[0].id;return p}"
-          assert old in text
+          if old not in text: raise SystemExit('normalize pattern not found')
           text=text.replace(old,new,1)
 
           old="function moveSection(id,dir){var i=project.sections.findIndex(function(s){return s.id===id}),j=i+dir;if(i<0||j<0||j>=project.sections.length)return;var x=project.sections.splice(i,1)[0];project.sections.splice(j,0,x);saveProject()}function deleteSection(id){if(project.sections.length<=1)return;var i=project.sections.findIndex(function(s){return s.id===id});if(i<0)return;if(!confirm('Delete this section and its saved ideas?'))return;project.sections.splice(i,1);if(project.activeId===id)project.activeId=project.sections[Math.max(0,i-1)].id;saveProject()}function addSection(){var t=E('sectionType').value,count=project.sections.filter(function(s){return s.type===t||s.label.indexOf(t)===0}).length+1,s={id:uid(),type:t,label:sectionLabel(t,count),phrases:[],progressions:[],voicings:[]};project.sections.push(s);project.activeId=s.id;saveProject();resetWorking(false)}"
           new="function moveSection(id,dir){var i=project.sections.findIndex(function(s){return s.id===id}),j=i+dir;if(i<0||j<0||j>=project.sections.length)return;var x=project.sections.splice(i,1)[0];project.sections.splice(j,0,x);saveProject()}function deleteSection(id){if(project.sections.length<=1)return;var i=project.sections.findIndex(function(s){return s.id===id});if(i<0)return;if(!confirm('Delete this section and its saved ideas?'))return;project.sections.splice(i,1);if(project.activeId===id)project.activeId=project.sections[Math.max(0,i-1)].id;saveProject()}function addSectionOfType(t,goToCapture){if(phrase.length&&!sectionCommitted&&!confirm('Start a new section without saving the current working melody?'))return null;var active=activeSection(),canRepurpose=project.sections.length===1&&active&&!phrase.length&&!(active.phrases||[]).length&&!(active.progressions||[]).length&&!(active.voicings||[]).length;if(canRepurpose){active.type=t;active.label=sectionLabel(t,1);project.activeId=active.id;saveProject();resetWorking(false);if(goToCapture)setTimeout(function(){window.scrollTo({top:E('capturePanel').offsetTop-10,behavior:'smooth'})},0);return active}var count=project.sections.filter(function(s){return s.type===t}).length+1,s={id:uid(),type:t,label:sectionLabel(t,count),phrases:[],progressions:[],voicings:[]};project.sections.push(s);project.activeId=s.id;saveProject();resetWorking(false);if(goToCapture)setTimeout(function(){window.scrollTo({top:E('capturePanel').offsetTop-10,behavior:'smooth'})},0);return s}function addSection(){return addSectionOfType(E('sectionType').value,false)}function startChosenSection(){return addSectionOfType(E('startSectionType').value,true)}"
-          assert old in text
+          if old not in text: raise SystemExit('add section pattern not found')
           text=text.replace(old,new,1)
 
           old="function goNextSection(){var i=project.sections.findIndex(function(s){return s.id===project.activeId});if(i<project.sections.length-1){project.activeId=project.sections[i+1].id;saveProject();resetWorking(false);window.scrollTo({top:E('capturePanel').offsetTop-10,behavior:'smooth'})}else{E('sectionType').value='Outro';addSection();window.scrollTo({top:E('capturePanel').offsetTop-10,behavior:'smooth'})}}"
           new="function goNextSection(){var i=project.sections.findIndex(function(s){return s.id===project.activeId});if(i<project.sections.length-1){project.activeId=project.sections[i+1].id;saveProject();resetWorking(false);window.scrollTo({top:E('capturePanel').offsetTop-10,behavior:'smooth'})}else{E('startSectionType').value='Verse';addSectionOfType('Verse',true)}}"
-          assert old in text
+          if old not in text: raise SystemExit('next section pattern not found')
           text=text.replace(old,new,1)
 
           old="E('projectName').oninput=function(){E('saveState').textContent='Saving…';clearTimeout(E('projectName')._t);E('projectName')._t=setTimeout(function(){project.name=E('projectName').value.trim()||'Untitled Song';saveProject()},400)};E('practiceSong').onclick=practiceSong;E('addSection').onclick=addSection;E('newSong').onclick=function(){if(!confirm('Start a new song? This replaces the saved song on this device.'))return;project=starterProject();localStorage.setItem(STORE,JSON.stringify(project));resetWorking(false)};"
           new="E('projectName').oninput=function(){E('saveState').textContent='Saving…';clearTimeout(E('projectName')._t);E('projectName')._t=setTimeout(function(){project.name=E('projectName').value.trim()||'Untitled Song';saveProject()},400)};E('practiceSong').onclick=practiceSong;E('startSection').onclick=startChosenSection;E('addSection').onclick=addSection;E('newSong').onclick=function(){if(!confirm('Start a new song? This replaces the saved song on this device.'))return;project=starterProject();localStorage.setItem(STORE,JSON.stringify(project));resetWorking(false)};"
-          assert old in text
+          if old not in text: raise SystemExit('bindings pattern not found')
           text=text.replace(old,new,1)
 
+          if 'id="startSection"' not in text or 'function startChosenSection' not in text: raise SystemExit('verification failed')
           p.write_text(text)
           PY
-          node --check <(python - <<'PY'
+          python - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text()
-          print(s.split('<script>',1)[1].rsplit('</script>',1)[0])
+          Path('/tmp/site.js').write_text(s.split('<script>',1)[1].rsplit('</script>',1)[0])
           PY
-          )
+          node --check /tmp/site.js
       - name: Commit update
         shell: bash
         run: |
