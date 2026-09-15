@@ -1,0 +1,70 @@
+from pathlib import Path
+import re
+
+p = Path('index.html')
+text = p.read_text()
+
+def replace_once(old, new, label):
+    global text
+    if old not in text:
+        raise SystemExit(f'missing expected block: {label}')
+    text = text.replace(old, new, 1)
+
+replace_once(
+    '<div id="key" class="muted">Capture at least three notes. The app will suggest chord homes that support the phrase.</div><div id="homes" class="grid" style="margin-top:12px"></div>',
+    '<div id="key" class="muted">Capture at least three notes. The app will fit complete chord progressions to the melody before suggesting individual chord shapes.</div><h3 style="margin-bottom:6px">Progressions fitted to this melody</h3><p class="muted" style="margin-top:0">The app compares several plausible tonal centers and scores complete four-chord paths against the phrase. Tap any chord inside a progression to see its guitar shapes.</p><div id="melodyProgressions" class="grid" style="margin-top:12px"></div><div id="chosenProgression" class="workingTray" style="margin-top:12px"><span class="empty">No progression chosen yet. Hear the suggestions first, then keep the one that feels right.</span></div><details style="margin-top:12px"><summary>Other single-chord homes that also fit the melody</summary><div id="homes" class="grid" style="margin-top:12px"></div></details>',
+    'harmonize UI'
+)
+replace_once(
+    'Save the <b>captured melody + the exact triad/chord/barre voicings you kept</b> into <b id="commitTarget">the active section</b>.',
+    'Save the <b>captured melody + chosen progression + the exact triad/chord/barre voicings you kept</b> into <b id="commitTarget">the active section</b>.',
+    'commit copy'
+)
+replace_once('✓ Save melody + kept shapes to section','✓ Save melody + progression + kept shapes to section','save button copy')
+replace_once('<strong>Transitions / departures</strong>','<strong>Progressions / transitions / departures</strong>','library heading')
+replace_once('shapeCache={},workingVoicings=[],sectionCommitted=false;','shapeCache={},workingVoicings=[],workingProgression=[],sectionCommitted=false;','working progression state')
+
+pattern = r"function updateHarmonySuggestions\(final\)\{.*?\}\nfunction voicingCode"
+replacement = r'''function progressionPatterns(mode){return mode==='major'?[[0,4,5,3],[0,5,3,4],[5,3,0,4],[0,3,4,0],[3,4,0,5]]:[[0,5,2,6],[0,3,5,4],[5,6,0,0],[0,6,5,6],[0,5,3,6]]}
+function keyCandidates(notes){var pcs=notes.map(pc),out=[];for(var r=0;r<12;r++)[['major',MA],['minor',MI]].forEach(function(z){var set=z[1].map(function(x){return pc(r+x)}),tonic=[r,pc(r+(z[0]==='major'?4:3)),pc(r+7)],score=0;pcs.forEach(function(x){score+=set.indexOf(x)>=0?2:-5});pcs.slice(0,3).forEach(function(x){if(tonic.indexOf(x)>=0)score+=1.25});pcs.slice(-2).forEach(function(x){if(tonic.indexOf(x)>=0)score+=.35});out.push({r:r,mode:z[0],scale:z[1],score:score})});out.sort(function(a,b){return b.score-a.score});var best=out[0]?out[0].score:0;return out.filter(function(k){return k.score>=best-2.5}).slice(0,4)}
+function scoreProgression(notes,k,pat){var cs=pat.map(function(d){return degreeChord(k,d)}),score=k.score+(pat[0]===0?3:0),L=notes.length;cs.forEach(function(c,i){var lo=Math.round(i*L/4),hi=Math.round((i+1)*L/4),win=notes.slice(lo,hi);win.forEach(function(m){if(c.t.indexOf(pc(m))>=0)score+=2});if(i===3&&notes.length&&c.t.indexOf(pc(notes[notes.length-1]))>=0)score+=1.2});return{key:k,pattern:pat,chords:cs,score:score}}
+function progressionSuggestions(notes,keys){if(!keys.length)return[];var main=keys[0],mainAll=progressionPatterns(main.mode).map(function(p){return scoreProgression(notes,main,p)}).sort(function(a,b){return b.score-a.score}),tonicFirst=mainAll.filter(function(x){return x.pattern[0]===0}),picked=tonicFirst.slice(0,3);mainAll.forEach(function(x){if(picked.length<3&&picked.indexOf(x)<0)picked.push(x)});if(keys[1]){var alt=progressionPatterns(keys[1].mode).map(function(p){return scoreProgression(notes,keys[1],p)}).filter(function(x){return x.pattern[0]===0}).sort(function(a,b){return b.score-a.score})[0];if(alt)picked.push(alt)}return picked.slice(0,4)}
+function renderWorkingProgression(){var el=E('chosenProgression');if(!el)return;if(!workingProgression.length){el.innerHTML='<span class="empty">No progression chosen yet. Hear the suggestions first, then keep the one that feels right.</span>';return}el.innerHTML='<b>Keeping with this phrase:</b> '+workingProgression.map(function(c){return'<span class="chip">'+c.name+'</span>'}).join(' → ')+' <span class="muted">You can still audition the other suggestions.</span>'}
+function chooseProgression(cs){workingProgression=cs.map(cloneChord);renderWorkingProgression();if(workingProgression.length)select(workingProgression[0])}
+function updateHarmonySuggestions(final){var a=compact();if(a.length<3)return;var keys=keyCandidates(a);key=keys[0]||infer(a);var progs=progressionSuggestions(a,keys),alts=keys.slice(1).map(function(k){return N[k.r]+' '+k.mode}).join(', ');E('key').innerHTML=(final?'Phrase complete · ':'Listening · ')+'strongest progression center <b>'+N[key.r]+' '+key.mode+'</b>'+(alts?' <span class="muted">· also plausible: '+alts+'</span>':'')+'.';E('melodyProgressions').innerHTML=progs.map(function(p,i){var label=i===0?'Best fit':i<3?'Variation '+i:'Alternate center',center=N[p.key.r]+' '+p.key.mode;return'<div class="card '+(i===0?'homeCard best':'')+'"><span class="badge">'+label+'</span><div class="muted" style="margin-top:6px">'+center+'</div><div class="chords" style="margin:9px 0">'+p.chords.map(function(c,j){return'<button class="progChord" data-p="'+i+'" data-c="'+j+'">'+c.name+'</button>'}).join(' → ')+'</div><div class="row"><button class="hearProg" data-p="'+i+'">▶ Hear progression</button><button class="keepProg keepBtn" data-p="'+i+'">♡ Use this progression</button></div></div>'}).join('');document.querySelectorAll('.hearProg').forEach(function(b){b.onclick=function(){playSeq(progs[+b.dataset.p].chords)}});document.querySelectorAll('.keepProg').forEach(function(b){b.onclick=function(){chooseProgression(progs[+b.dataset.p].chords)}});document.querySelectorAll('.progChord').forEach(function(b){b.onclick=function(){var c=progs[+b.dataset.p].chords[+b.dataset.c];playChord(c);select(c)}});var homes=harmonicHomes();E('homes').innerHTML=homes.map(function(h,i){var why=h.matches+' melody tone'+(h.matches===1?'':'s')+' inside the chord'+(h.lastHit?' · landing note belongs to it':'');return'<div class="card homeCard '+(i===0?'best':'')+'"><span class="badge">'+(i===0?'Best single-chord fit':'Alternative chord')+'</span><h3 style="margin:8px 0">'+h.chord.name+'</h3><div class="muted">'+why+'</div><div class="row" style="margin-top:9px"><button class="hearHome" data-i="'+i+'">🔊 Hear chord</button><button class="showHome" data-i="'+i+'">Show shapes</button></div></div>'}).join('');document.querySelectorAll('.hearHome').forEach(function(b){b.onclick=function(){playChord(homes[+b.dataset.i].chord)}});document.querySelectorAll('.showHome').forEach(function(b){b.onclick=function(){select(homes[+b.dataset.i].chord)}});if(!workingProgression.length&&progs[0]&&progs[0].chords[0])select(progs[0].chords[0]);renderWorkingProgression()}
+function voicingCode'''
+text, n = re.subn(pattern, replacement, text, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit('failed to replace progression suggestion engine')
+
+pattern = r"function commitIdea\(\)\{.*?\}\nfunction unlockNext"
+replacement = r'''function commitIdea(){var notes=compact();if(notes.length<1){E('commitStatus').textContent='Capture a melody first.';return}var sec=activeSection(),events=phraseTimes.map(function(e){return{midi:e.midi,at:e.at}});sec.phrases.push({id:uid(),notes:notes.slice(),events:events,key:key?{r:key.r,mode:key.mode}:null,createdAt:Date.now()});if(workingProgression.length){var sig=workingProgression.map(function(c){return c.name}).join('>'),dupProg=sec.progressions.some(function(p){return(p.chords||[]).map(function(c){return c.name}).join('>')===sig});if(!dupProg)sec.progressions.push({id:uid(),label:'Melody-fit progression · '+(key?N[key.r]+' '+key.mode:'captured melody'),chords:workingProgression.map(cloneChord),createdAt:Date.now()})}workingVoicings.forEach(function(v){var dup=sec.voicings.some(function(x){return x.chord&&x.chord.name===v.chord.name&&x.type===v.type&&x.ss.join(',')===v.ss.join(',')&&x.fs.join(',')===v.fs.join(',')});if(!dup)sec.voicings.push({id:uid(),chord:cloneChord(v.chord),type:v.type,ss:v.ss.slice(),fs:v.fs.slice(),createdAt:Date.now()})});saveProject();sectionCommitted=true;E('commitStatus').textContent='Saved melody'+(workingProgression.length?', progression':'')+' and kept shapes to '+sec.label+'. Now explore where the song should go next.';unlockNext()}
+function unlockNext'''
+text, n = re.subn(pattern, replacement, text, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit('failed to patch commitIdea')
+
+replace_once('workingVoicings=[];sectionCommitted=false;','workingVoicings=[];workingProgression=[];sectionCommitted=false;','reset working progression')
+replace_once(
+    "E('homes').innerHTML='';E('voicings').innerHTML='<span class=\"muted\">Capture a melody, then choose a suggested chord.</span>';",
+    "E('homes').innerHTML='';E('melodyProgressions').innerHTML='';renderWorkingProgression();E('voicings').innerHTML='<span class=\"muted\">Capture a melody, then choose a chord from a suggested progression.</span>';",
+    'reset harmonize UI'
+)
+
+pattern = r"function pitch\(b,sr\)\{.*?\}\nfunction tick\(\)\{.*?\}\nasync function start"
+replacement = r'''function pitch(b,sr){var rms=0,i;for(i=0;i<b.length;i++)rms+=b[i]*b[i];rms=Math.sqrt(rms/b.length);if(rms<.008)return null;var best=0,L=-1;for(var lag=Math.floor(sr/900);lag<=Math.min(Math.floor(sr/75),b.length/2);lag++){var sum=0,n=b.length-lag;for(i=0;i<n;i++){var d=b[i]-b[i+lag];sum+=d*d}var sc=1-sum/(2*n*rms*rms);if(sc>best){best=sc;L=lag}}return L>0&&best>.45?{f:sr/L,c:best}:null}
+function octaveGuard(m,ref){if(ref==null)return m;var opts=[m-24,m-12,m,m+12,m+24],best=m,dist=Math.abs(m-ref);opts.forEach(function(x){var d=Math.abs(x-ref);if(d<dist){dist=d;best=x}});return Math.abs(m-ref)>=10&&dist<=7?best:m}
+function phraseReference(){var a=phrase.slice(-6);if(!a.length)return currentMidi;var s=a.slice().sort(function(x,y){return x-y});return s[Math.floor(s.length/2)]}
+function tick(){if(!listening)return;var now=Date.now(),b=new Float32Array(an.fftSize);an.getFloatTimeDomainData(b);if(now<synthUntil){raf=requestAnimationFrame(tick);return}var p=pitch(b,micCtx.sampleRate);if(p){lastSound=now;finished=false;var raw=Math.round(69+12*Math.log(p.f/440)/Math.log(2)),m=octaveGuard(raw,phraseReference());hist.push(m);if(hist.length>7)hist.shift();var ct={},st=m,mx=0;hist.forEach(function(x){ct[x]=(ct[x]||0)+1;if(ct[x]>mx){mx=ct[x];st=x}});if(st!==cand){cand=st;candAt=now}if(now-candAt>120){currentMidi=st;var stableHz=440*Math.pow(2,(st-69)/12);E('note').textContent=nn(st);E('hz').textContent=stableHz.toFixed(1)+' Hz';E('meter').style.width=Math.round(p.c*100)+'%';if(selected)renderShapes();if(st!==last){phrase.push(st);phraseTimes.push({midi:st,at:now});last=st;showPhrase();if(compact().length>=3)updateHarmonySuggestions(false)}}E('status').textContent='Listening — keep playing the melody. Full progression suggestions are following it.'}else{hist=[];cand=null;E('meter').style.width='0';if(phrase.length&&lastSound&&now-lastSound>1200&&!finished){finished=true;last=null;if(compact().length>=3)updateHarmonySuggestions(true);E('status').textContent='Phrase detected. Hear the progression fits first, then choose shapes for the chords you want to keep.'}}raf=requestAnimationFrame(tick)}
+async function start'''
+text, n = re.subn(pattern, replacement, text, count=1, flags=re.S)
+if n != 1:
+    raise SystemExit('failed to patch pitch/tick')
+
+replace_once(
+    "document.addEventListener('pointerdown',function prime(){unlockPlayback().catch(function(){});document.removeEventListener('pointerdown',prime)},{passive:true});renderSongBuilder();showPhrase();renderWorking();renderJourney();neck(null);",
+    "document.addEventListener('pointerdown',function prime(){unlockPlayback().catch(function(){});document.removeEventListener('pointerdown',prime)},{passive:true});renderSongBuilder();showPhrase();renderWorking();renderWorkingProgression();renderJourney();neck(null);",
+    'initial render'
+)
+
+p.write_text(text)
